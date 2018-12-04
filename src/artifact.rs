@@ -17,16 +17,16 @@ pub fn decode(req: &mut Request) -> IronResult<Response> {
             _ => x,
         }).collect();
 
-    println!("{}", radc);
     let adc_string = String::from(radc);
     let decoded = base64::decode(&adc_string).unwrap();
     let deck = parse_deck(adc_string, decoded);
     let json_deck = serde_json::to_value(&deck).unwrap();
+
     let mut resp = Response::new();
     resp.body = Some(std::boxed::Box::new(json_deck.to_string()));
     resp.status = Some(status::Ok);
-    resp.headers = iron::Headers::new();
     resp.headers.set(iron::headers::ContentType::json());
+
     Ok(resp)
 }
 
@@ -60,9 +60,9 @@ fn parse_deck(_deck_code: String, deck_bytes: Vec<u8>) -> Deck {
 
     let total_card_bytes = if version > 1 as u8 {
         current_byte_index += 1;
-        total_bytes as u8 - deck_bytes.get(2).unwrap()
+        total_bytes - *deck_bytes.get(2).unwrap() as usize
     } else {
-        total_bytes as u8
+        total_bytes
     };
 
     let mut num_heroes = 0;
@@ -125,8 +125,10 @@ fn parse_deck(_deck_code: String, deck_bytes: Vec<u8>) -> Deck {
         });
     }
 
-    let name = if current_byte_index < total_card_bytes as usize {
-        String::from("has name")
+    let name = if current_byte_index <= total_card_bytes {
+        let bytes = &deck_bytes[total_card_bytes..];
+        let out: String = bytes.iter().map(|x| *x as char).collect();
+        out
     } else {
         String::from("")
     };
