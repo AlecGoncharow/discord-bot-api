@@ -4,6 +4,9 @@ extern crate mount;
 extern crate regex;
 extern crate router;
 extern crate staticfile;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde_json;
 
 mod artifact;
 
