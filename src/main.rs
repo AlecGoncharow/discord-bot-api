@@ -3,8 +3,9 @@ extern crate mount;
 extern crate router;
 extern crate staticfile;
 
-use iron::status;
-use iron::{Iron, IronResult, Request, Response};
+mod artifact;
+
+use iron::{status, Iron, IronResult, Request, Response};
 use mount::Mount;
 use router::Router;
 use staticfile::Static;
@@ -39,6 +40,11 @@ fn main() {
     let mut router: Router = Router::new();
     router.get("/", hello, "index");
     router.get("/:name", hello_name, "name");
+    router.get(
+        "/artifact/decks/decode/:adc",
+        artifact::decode,
+        "adc_decode",
+    );
 
     let mut mount = Mount::new();
     // Serve the shared JS/CSS at /static

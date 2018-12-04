@@ -198,3 +198,6 @@ class CArtifactDeckDecoder
 	}
 };
 
+$arg = $_GET['deck_code'];
+$d = new CArtifactDeckDecoder();
+echo json_encode($d->ParseDeck($arg));
