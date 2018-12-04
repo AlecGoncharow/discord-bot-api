@@ -49,10 +49,8 @@ fn parse_deck(_deck_code: String, deck_bytes: Vec<u8>) -> Deck {
     current_byte_index += 1;
 
     let version = deck_bytes.get(0).unwrap() >> 4;
-    println!("{}", version);
 
-    let checksum = deck_bytes.get(1).unwrap();
-    println!("{}", checksum);
+    let _checksum = deck_bytes.get(1).unwrap();
     current_byte_index += 1;
 
     let total_card_bytes = if version > 1 as u8 {
@@ -64,7 +62,7 @@ fn parse_deck(_deck_code: String, deck_bytes: Vec<u8>) -> Deck {
 
     let mut num_heroes = 0;
     read_encoded_u32(
-        *version_and_heroes,
+        *version_and_heroes as usize,
         3,
         &deck_bytes,
         &mut current_byte_index,
@@ -135,7 +133,12 @@ fn parse_deck(_deck_code: String, deck_bytes: Vec<u8>) -> Deck {
     }
 }
 
-fn read_bits_chunk(n_chunk: u8, n_bits: u8, n_curr_shift: u8, n_out_bits: &mut u32) -> bool {
+fn read_bits_chunk(
+    n_chunk: usize,
+    n_bits: usize,
+    n_curr_shift: usize,
+    n_out_bits: &mut u32,
+) -> bool {
     let continue_bit = 1 << n_bits;
     let new_bits = n_chunk & (continue_bit - 1);
     *n_out_bits |= (new_bits << n_curr_shift) as u32;
@@ -144,8 +147,8 @@ fn read_bits_chunk(n_chunk: u8, n_bits: u8, n_curr_shift: u8, n_out_bits: &mut u
 }
 
 fn read_encoded_u32(
-    base_value: u8,
-    base_bits: u8,
+    base_value: usize,
+    base_bits: usize,
     deck_bytes: &Vec<u8>,
     start_index: &mut usize,
     end_index: usize,
@@ -163,7 +166,7 @@ fn read_encoded_u32(
 
             let next_byte = deck_bytes.get(*start_index).unwrap();
             *start_index += 1;
-            if !read_bits_chunk(*next_byte, 7, delta_shift, out_value) {
+            if !read_bits_chunk(*next_byte as usize, 7, delta_shift, out_value) {
                 break;
             }
 
@@ -176,7 +179,7 @@ fn read_serialized_card(
     deck_bytes: &Vec<u8>,
     start_index: &mut usize,
     end_index: usize,
-    prev_card_base: &mut u8,
+    prev_card_base: &mut u32,
     out_count: &mut u8,
     out_id: &mut u32,
 ) -> bool {
@@ -196,7 +199,7 @@ fn read_serialized_card(
     //read in the delta, which has 5 bits in the header, then additional bytes while the value is set
     let mut card_delta = 0;
     read_encoded_u32(
-        *header,
+        *header as usize,
         5,
         &deck_bytes,
         start_index,
@@ -204,7 +207,7 @@ fn read_serialized_card(
         &mut card_delta,
     );
 
-    *out_id = *prev_card_base as u32 + card_delta;
+    *out_id = *prev_card_base + card_delta;
 
     //now parse the count if we have an extended count
     match has_extended_count {
@@ -224,6 +227,6 @@ fn read_serialized_card(
         }
     }
 
-    *prev_card_base = *out_id as u8;
+    *prev_card_base = *out_id;
     true
 }
