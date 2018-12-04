@@ -13,6 +13,7 @@ class CArtifactDeckDecoder
 		if( !$deckBytes )
 			return false;
 
+		print_r($deckBytes);
 		$deck = CArtifactDeckDecoder::ParseDeckInternal( $strDeckCode, $deckBytes );
 		return $deck;
 	}
@@ -198,6 +199,6 @@ class CArtifactDeckDecoder
 	}
 };
 
-$arg = $_GET['deck_code'];
+$arg = $argv[1];
 $d = new CArtifactDeckDecoder();
 echo json_encode($d->ParseDeck($arg));
