@@ -21,7 +21,12 @@ pub fn decode(req: &mut Request) -> IronResult<Response> {
     let adc_string = String::from(radc);
     let decoded = base64::decode(&adc_string).unwrap();
     let deck = parse_deck(adc_string, decoded);
-    let resp = Response::with((status::Ok, format!("ADC: {:?}", deck)));
+    let json_deck = serde_json::to_value(&deck).unwrap();
+    let mut resp = Response::new();
+    resp.body = Some(std::boxed::Box::new(json_deck.to_string()));
+    resp.status = Some(status::Ok);
+    resp.headers = iron::Headers::new();
+    resp.headers.set(iron::headers::ContentType::json());
     Ok(resp)
 }
 
