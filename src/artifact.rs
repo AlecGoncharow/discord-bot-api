@@ -3,13 +3,13 @@ use regex::Regex;
 use router::Router;
 
 // refer to deck_decoder.php for reference implementation
-// https://github.com/ValveSoftware/ArtifactDeckCode/
+// https://github.com/ValveSoftware/ArtifactDeserializedDeckCode/
 pub fn decode(req: &mut Request) -> IronResult<Response> {
     let re = Regex::new(r"^ADC").unwrap();
     let params = req.extensions.get::<Router>().unwrap();
     let adc = params.find("adc").unwrap();
-    let mut radc = re.replace_all(adc, "");
-    radc = radc
+    let mut stripped_adc = re.replace_all(adc, "");
+    stripped_adc = stripped_adc
         .chars()
         .map(|x| match x {
             '-' => '/',
@@ -17,7 +17,7 @@ pub fn decode(req: &mut Request) -> IronResult<Response> {
             _ => x,
         }).collect();
 
-    let adc_string = String::from(radc);
+    let adc_string = String::from(stripped_adc);
     let decoded = base64::decode(&adc_string).unwrap();
     let deck = parse_deck(adc_string, decoded);
     let json_deck = serde_json::to_value(&deck).unwrap();
@@ -31,23 +31,23 @@ pub fn decode(req: &mut Request) -> IronResult<Response> {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Hero {
+struct DeserializedHero {
     id: u32,
     turn: u8,
 }
 #[derive(Serialize, Deserialize, Debug)]
-struct Card {
+struct DeserializedCard {
     id: u32,
     count: u8,
 }
 #[derive(Serialize, Deserialize, Debug)]
-struct Deck {
-    heroes: Vec<Hero>,
-    cards: Vec<Card>,
+struct DeserializedDeck {
+    heroes: Vec<DeserializedHero>,
+    cards: Vec<DeserializedCard>,
     name: String,
 }
 
-fn parse_deck(_deck_code: String, deck_bytes: Vec<u8>) -> Deck {
+fn parse_deck(_deck_code: String, deck_bytes: Vec<u8>) -> DeserializedDeck {
     let total_bytes = deck_bytes.len();
     let mut current_byte_index = 0 as usize;
     let version_and_heroes = deck_bytes.get(0).unwrap();
@@ -75,7 +75,7 @@ fn parse_deck(_deck_code: String, deck_bytes: Vec<u8>) -> Deck {
         &mut num_heroes,
     );
 
-    let mut heroes = Vec::<Hero>::new();
+    let mut heroes = Vec::<DeserializedHero>::new();
     let mut prev_card_base = 0;
     for curr_hero in 0..num_heroes {
         let mut hero_turn = 0;
@@ -94,13 +94,13 @@ fn parse_deck(_deck_code: String, deck_bytes: Vec<u8>) -> Deck {
             );
             break;
         }
-        heroes.push(Hero {
+        heroes.push(DeserializedHero {
             id: hero_card_id,
             turn: hero_turn,
         });
     }
 
-    let mut cards = Vec::<Card>::new();
+    let mut cards = Vec::<DeserializedCard>::new();
     prev_card_base = 0;
     while current_byte_index < total_card_bytes as usize {
         let mut card_count = 0;
@@ -119,7 +119,7 @@ fn parse_deck(_deck_code: String, deck_bytes: Vec<u8>) -> Deck {
             );
             break;
         }
-        cards.push(Card {
+        cards.push(DeserializedCard {
             id: card_id,
             count: card_count,
         });
@@ -133,7 +133,7 @@ fn parse_deck(_deck_code: String, deck_bytes: Vec<u8>) -> Deck {
         String::from("")
     };
 
-    Deck {
+    DeserializedDeck {
         heroes,
         cards,
         name,
