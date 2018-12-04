@@ -34,6 +34,7 @@ fn main() {
     let mut router: Router = Router::new();
     router.get("/", hello, "index");
     router.get("/:name", hello_name, "name");
+    router.get("/decks/:deckcode/", decode_deck, "decode_deck");
 
     // Run the server.
     Iron::new(router)

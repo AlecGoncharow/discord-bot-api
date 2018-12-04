@@ -1,10 +1,15 @@
 extern crate iron;
+extern crate mount;
 extern crate router;
+extern crate staticfile;
 
 use iron::status;
 use iron::{Iron, IronResult, Request, Response};
+use mount::Mount;
 use router::Router;
+use staticfile::Static;
 use std::env;
+use std::path::Path;
 
 // Serves a string to the user.  Try accessing "/".
 fn hello(_: &mut Request) -> IronResult<Response> {
@@ -35,8 +40,13 @@ fn main() {
     router.get("/", hello, "index");
     router.get("/:name", hello_name, "name");
 
+    let mut mount = Mount::new();
+    // Serve the shared JS/CSS at /static
+    mount
+        .mount("/", router)
+        .mount("/static", Static::new(Path::new("static/")));
     // Run the server.
-    Iron::new(router)
+    Iron::new(mount)
         .http(("0.0.0.0", get_server_port()))
         .unwrap();
 }
