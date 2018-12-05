@@ -1,13 +1,248 @@
 use iron::{status, IronResult, Request, Response};
 use regex::Regex;
 use router::Router;
+use std::fs::File;
+use std::path::Path;
+
+#[derive(Serialize, Deserialize, Debug)]
+struct CardSetJson {
+    card_set: CardSet,
+}
+#[derive(Serialize, Deserialize, Debug)]
+struct CardSet {
+    version: usize,
+    set_info: SetInfo,
+    card_list: Vec<Card>,
+}
+#[derive(Serialize, Deserialize, Debug)]
+struct SetInfo {
+    set_id: usize,
+    pack_item_def: usize,
+    name: TranslatedText,
+}
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct TranslatedText {
+    #[serde(default)]
+    english: String,
+    #[serde(default)]
+    german: String,
+    #[serde(default)]
+    french: String,
+    #[serde(default)]
+    italian: String,
+    #[serde(default)]
+    koreana: String,
+    #[serde(default)]
+    spanish: String,
+    #[serde(default)]
+    schinese: String,
+    #[serde(default)]
+    tchinese: String,
+    #[serde(default)]
+    russian: String,
+    #[serde(default)]
+    thai: String,
+    #[serde(default)]
+    japanese: String,
+    #[serde(default)]
+    portuguese: String,
+    #[serde(default)]
+    polish: String,
+    #[serde(default)]
+    danish: String,
+    #[serde(default)]
+    dutch: String,
+    #[serde(default)]
+    finnish: String,
+    #[serde(default)]
+    norwegian: String,
+    #[serde(default)]
+    swedish: String,
+    #[serde(default)]
+    hungarian: String,
+    #[serde(default)]
+    czech: String,
+    #[serde(default)]
+    romanian: String,
+    #[serde(default)]
+    turkish: String,
+    #[serde(default)]
+    brazilian: String,
+    #[serde(default)]
+    bulgarian: String,
+    #[serde(default)]
+    greek: String,
+    #[serde(default)]
+    ukrainian: String,
+    #[serde(default)]
+    latam: String,
+    #[serde(default)]
+    vietnamese: String,
+}
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct Card {
+    card_id: usize,
+    base_card_id: usize,
+    card_type: String,
+    #[serde(default)]
+    sub_type: String,
+    card_name: TranslatedText,
+    card_text: TranslatedText,
+    mini_image: Image,
+    large_image: Image,
+    ingame_image: Image,
+    #[serde(default)]
+    illustrator: String,
+    #[serde(default)]
+    is_red: bool,
+    #[serde(default)]
+    is_green: bool,
+    #[serde(default)]
+    is_blue: bool,
+    #[serde(default)]
+    is_black: bool,
+    #[serde(default)]
+    gold_cost: usize,
+    #[serde(default)]
+    mana_cost: usize,
+    #[serde(default)]
+    attack: usize,
+    #[serde(default)]
+    hit_points: usize,
+    references: Vec<Reference>,
+}
+#[derive(Serialize, Deserialize, Debug)]
+struct HeroCard {
+    card: Card,
+    turn: usize,
+}
+#[derive(Serialize, Deserialize, Debug)]
+struct CardCard {
+    card: Card,
+    count: usize,
+}
+#[derive(Serialize, Deserialize, Debug)]
+struct Deck {
+    name: String,
+    heroes: Vec<HeroCard>,
+    cards: Vec<CardCard>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct Image {
+    #[serde(default)]
+    default: String,
+}
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct Reference {
+    #[serde(default)]
+    card_id: usize,
+    #[serde(default)]
+    ref_type: String,
+    #[serde(default)]
+    count: usize,
+}
+
+pub fn decode_and_return_cards(req: &mut Request) -> IronResult<Response> {
+    let params = req.extensions.get::<Router>().unwrap();
+    let adc = params.find("adc").unwrap();
+    let deck = decode(adc);
+    let card_set_0: CardSetJson = match serde_json::from_reader(
+        File::open(Path::new("./static/card_set_0.json")).expect("file not found"),
+    ) {
+        Ok(r) => r,
+        Err(e) => panic!("Error reading fields: {}", e),
+    };
+    let card_set_1: CardSetJson = match serde_json::from_reader(
+        File::open(Path::new("./static/card_set_1.json")).expect("file not found"),
+    ) {
+        Ok(r) => r,
+        Err(e) => panic!("Error reading fields: {}", e),
+    };
+
+    let sets = vec![card_set_0.card_set, card_set_1.card_set];
+
+    let heroes = deck.heroes;
+    let mut ret_heroes = Vec::<HeroCard>::new();
+    for hero in &heroes {
+        for set in &sets {
+            let index = match set
+                .card_list
+                .iter()
+                .position(|ref c| c.card_id == hero.id as usize)
+            {
+                Some(i) => i,
+                None => continue,
+            };
+            let card = match set.card_list.get(index) {
+                Some(c) => c.clone(),
+                None => continue,
+            };
+            ret_heroes.push(HeroCard {
+                card,
+                turn: hero.turn as usize,
+            })
+        }
+    }
+
+    let cards = deck.cards;
+    let mut ret_cards = Vec::<CardCard>::new();
+    for ccard in &cards {
+        for set in &sets {
+            let index = match set
+                .card_list
+                .iter()
+                .position(|ref c| c.card_id == ccard.id as usize)
+            {
+                Some(i) => i,
+                None => continue,
+            };
+
+            let card = match set.card_list.get(index) {
+                Some(c) => c.clone(),
+                None => continue,
+            };
+
+            ret_cards.push(CardCard {
+                card,
+                count: ccard.count as usize,
+            })
+        }
+    }
+
+    let ret_deck = Deck {
+        name: deck.name,
+        heroes: ret_heroes,
+        cards: ret_cards,
+    };
+
+    let json_deck = serde_json::to_value(&ret_deck).unwrap();
+    let mut resp = Response::new();
+    resp.body = Some(std::boxed::Box::new(json_deck.to_string()));
+    resp.status = Some(status::Ok);
+    resp.headers.set(iron::headers::ContentType::json());
+
+    Ok(resp)
+}
+
+pub fn decode_and_return_json(req: &mut Request) -> IronResult<Response> {
+    let params = req.extensions.get::<Router>().unwrap();
+    let adc = params.find("adc").unwrap();
+    let deck = decode(adc);
+    let json_deck = serde_json::to_value(&deck).unwrap();
+
+    let mut resp = Response::new();
+    resp.body = Some(std::boxed::Box::new(json_deck.to_string()));
+    resp.status = Some(status::Ok);
+    resp.headers.set(iron::headers::ContentType::json());
+
+    Ok(resp)
+}
 
 // refer to deck_decoder.php for reference implementation
 // https://github.com/ValveSoftware/ArtifactDeserializedDeckCode/
-pub fn decode(req: &mut Request) -> IronResult<Response> {
+fn decode(adc: &str) -> DeserializedDeck {
     let re = Regex::new(r"^ADC").unwrap();
-    let params = req.extensions.get::<Router>().unwrap();
-    let adc = params.find("adc").unwrap();
     let mut stripped_adc = re.replace_all(adc, "");
     stripped_adc = stripped_adc
         .chars()
@@ -19,15 +254,7 @@ pub fn decode(req: &mut Request) -> IronResult<Response> {
 
     let adc_string = String::from(stripped_adc);
     let decoded = base64::decode(&adc_string).unwrap();
-    let deck = parse_deck(adc_string, decoded);
-    let json_deck = serde_json::to_value(&deck).unwrap();
-
-    let mut resp = Response::new();
-    resp.body = Some(std::boxed::Box::new(json_deck.to_string()));
-    resp.status = Some(status::Ok);
-    resp.headers.set(iron::headers::ContentType::json());
-
-    Ok(resp)
+    parse_deck(adc_string, decoded)
 }
 
 #[derive(Serialize, Deserialize, Debug)]

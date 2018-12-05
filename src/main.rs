@@ -2,6 +2,7 @@ extern crate base64;
 extern crate iron;
 extern crate mount;
 extern crate regex;
+extern crate reqwest;
 extern crate router;
 extern crate staticfile;
 #[macro_use]
@@ -47,8 +48,13 @@ fn main() {
     router.get("/:name", hello_name, "name");
     router.get(
         "/artifact/decks/decode/:adc",
-        artifact::decode,
+        artifact::decode_and_return_json,
         "adc_decode",
+    );
+    router.get(
+        "/artifact/decks/deck/:adc",
+        artifact::decode_and_return_cards,
+        "adc_deck",
     );
 
     let mut mount = Mount::new();
