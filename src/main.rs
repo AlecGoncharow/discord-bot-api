@@ -2,7 +2,6 @@ extern crate base64;
 extern crate iron;
 extern crate mount;
 extern crate regex;
-extern crate reqwest;
 extern crate router;
 extern crate staticfile;
 #[macro_use]
