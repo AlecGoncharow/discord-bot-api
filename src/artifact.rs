@@ -2,21 +2,19 @@ use iron::{status, IronResult, Request, Response};
 use regex::Regex;
 use router::Router;
 use std::collections::HashMap;
-use std::fs::File;
-use std::path::Path;
 
 #[derive(Serialize, Deserialize, Debug)]
-struct CardSetJson {
-    card_set: CardSet,
+pub struct CardSetJson {
+    pub card_set: CardSet,
 }
 #[derive(Serialize, Deserialize, Debug)]
-struct CardSet {
-    version: usize,
-    set_info: SetInfo,
-    card_list: Vec<Card>,
+pub struct CardSet {
+    pub version: usize,
+    pub set_info: SetInfo,
+    pub card_list: Vec<Card>,
 }
 #[derive(Serialize, Deserialize, Debug)]
-struct SetInfo {
+pub struct SetInfo {
     set_id: usize,
     pack_item_def: usize,
     name: TranslatedText,
@@ -81,8 +79,8 @@ struct TranslatedText {
     vietnamese: String,
 }
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct Card {
-    card_id: usize,
+pub struct Card {
+    pub card_id: usize,
     base_card_id: usize,
     card_type: String,
     #[serde(default)]
@@ -144,30 +142,13 @@ struct Reference {
     count: usize,
 }
 
-pub fn decode_and_return_cards(req: &mut Request) -> IronResult<Response> {
+pub fn decode_and_return_cards(
+    req: &mut Request,
+    map: &HashMap<usize, Card>,
+) -> IronResult<Response> {
     let params = req.extensions.get::<Router>().unwrap();
     let adc = params.find("adc").unwrap();
     let deck = decode(adc);
-    let card_set_0: CardSetJson = match serde_json::from_reader(
-        File::open(Path::new("./static/card_set_0.json")).expect("file not found"),
-    ) {
-        Ok(r) => r,
-        Err(e) => panic!("Error reading fields: {}", e),
-    };
-    let card_set_1: CardSetJson = match serde_json::from_reader(
-        File::open(Path::new("./static/card_set_1.json")).expect("file not found"),
-    ) {
-        Ok(r) => r,
-        Err(e) => panic!("Error reading fields: {}", e),
-    };
-
-    let sets = vec![card_set_0.card_set, card_set_1.card_set];
-    let mut map = HashMap::<usize, Card>::new();
-    for set in sets {
-        for card in set.card_list {
-            map.insert(card.card_id, card);
-        }
-    }
 
     let heroes = deck.heroes;
     let mut ret_heroes = Vec::<HeroCard>::new();

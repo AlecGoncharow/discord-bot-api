@@ -14,7 +14,9 @@ use iron::{status, Iron, IronResult, Request, Response};
 use mount::Mount;
 use router::Router;
 use staticfile::Static;
+use std::collections::HashMap;
 use std::env;
+use std::fs::File;
 use std::path::Path;
 
 // Serves a string to the user.  Try accessing "/".
@@ -39,6 +41,30 @@ fn get_server_port() -> u16 {
         .unwrap_or(8080)
 }
 
+fn set_up_deck_map() -> HashMap<usize, artifact::Card> {
+    let card_set_0: artifact::CardSetJson = match serde_json::from_reader(
+        File::open(Path::new("./static/card_set_0.json")).expect("file not found"),
+    ) {
+        Ok(r) => r,
+        Err(e) => panic!("Error reading fields: {}", e),
+    };
+    let card_set_1: artifact::CardSetJson = match serde_json::from_reader(
+        File::open(Path::new("./static/card_set_1.json")).expect("file not found"),
+    ) {
+        Ok(r) => r,
+        Err(e) => panic!("Error reading fields: {}", e),
+    };
+
+    let sets = vec![card_set_0.card_set, card_set_1.card_set];
+    let mut map = HashMap::<usize, artifact::Card>::new();
+    for set in sets {
+        for card in set.card_list {
+            map.insert(card.card_id, card);
+        }
+    }
+    map
+}
+
 /// Configure and run our server.
 fn main() {
     // Set up our URL router.
@@ -50,9 +76,11 @@ fn main() {
         artifact::decode_and_return_json,
         "adc_decode",
     );
+
+    let map = set_up_deck_map();
     router.get(
         "/artifact/decks/deck/:adc",
-        artifact::decode_and_return_cards,
+        move |request: &mut Request| artifact::decode_and_return_cards(request, &map),
         "adc_deck",
     );
 
