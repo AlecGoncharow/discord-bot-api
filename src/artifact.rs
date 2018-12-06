@@ -151,19 +151,28 @@ pub fn decode_and_return_cards(
     let deck = decode(adc);
 
     let heroes = deck.heroes;
+    let mut cards = deck.cards;
     let mut ret_heroes = Vec::<HeroCard>::new();
     for hero in &heroes {
         let card = match map.get(&(hero.id as usize)) {
             Some(c) => c.clone(),
             None => continue,
         };
+        let refer = card.references.clone();
+        for r in refer {
+            if r.ref_type == "includes" {
+                cards.push(DeserializedCard {
+                    id: r.card_id,
+                    count: r.count,
+                });
+            }
+        }
         ret_heroes.push(HeroCard {
             card: card,
             turn: hero.turn as usize,
         })
     }
 
-    let cards = deck.cards;
     let mut ret_cards = Vec::<CardCard>::new();
     for card in &cards {
         let real_card = match map.get(&(card.id as usize)) {
@@ -226,13 +235,13 @@ fn decode(adc: &str) -> DeserializedDeck {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct DeserializedHero {
-    id: u32,
-    turn: u8,
+    id: usize,
+    turn: usize,
 }
 #[derive(Serialize, Deserialize, Debug)]
 struct DeserializedCard {
-    id: u32,
-    count: u8,
+    id: usize,
+    count: usize,
 }
 #[derive(Serialize, Deserialize, Debug)]
 struct DeserializedDeck {
@@ -272,8 +281,8 @@ fn parse_deck(_deck_code: String, deck_bytes: Vec<u8>) -> DeserializedDeck {
     let mut heroes = Vec::<DeserializedHero>::new();
     let mut prev_card_base = 0;
     for curr_hero in 0..num_heroes {
-        let mut hero_turn = 0;
-        let mut hero_card_id = 0;
+        let mut hero_turn = 0 as usize;
+        let mut hero_card_id = 0 as usize;
         if !read_serialized_card(
             &deck_bytes,
             &mut current_byte_index,
@@ -338,11 +347,11 @@ fn read_bits_chunk(
     n_chunk: usize,
     n_bits: usize,
     n_curr_shift: usize,
-    n_out_bits: &mut u32,
+    n_out_bits: &mut usize,
 ) -> bool {
     let continue_bit = 1 << n_bits;
     let new_bits = n_chunk & (continue_bit - 1);
-    *n_out_bits |= (new_bits << n_curr_shift) as u32;
+    *n_out_bits |= (new_bits << n_curr_shift) as usize;
 
     n_chunk & continue_bit != 0
 }
@@ -353,7 +362,7 @@ fn read_encoded_u32(
     deck_bytes: &Vec<u8>,
     start_index: &mut usize,
     end_index: usize,
-    out_value: &mut u32,
+    out_value: &mut usize,
 ) {
     *out_value = 0;
     let mut delta_shift = 0;
@@ -380,9 +389,9 @@ fn read_serialized_card(
     deck_bytes: &Vec<u8>,
     start_index: &mut usize,
     end_index: usize,
-    prev_card_base: &mut u32,
-    out_count: &mut u8,
-    out_id: &mut u32,
+    prev_card_base: &mut usize,
+    out_count: &mut usize,
+    out_id: &mut usize,
 ) -> bool {
     //end of the memory block?
     if *start_index > end_index {
@@ -413,18 +422,11 @@ fn read_serialized_card(
     //now parse the count if we have an extended count
     match has_extended_count {
         true => {
-            read_encoded_u32(
-                0,
-                0,
-                &deck_bytes,
-                start_index,
-                end_index,
-                &mut (*out_count as u32),
-            );
+            read_encoded_u32(0, 0, &deck_bytes, start_index, end_index, &mut (*out_count));
         }
         false => {
             //the count is just the upper two bits + 1 (since we don't encode zero)
-            *out_count = (header >> 6) + 1 as u8;
+            *out_count = (header >> 6) as usize + 1;
         }
     }
 
