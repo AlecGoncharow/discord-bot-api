@@ -1,6 +1,5 @@
 use artifact_serde::*;
 use iron::{status, IronResult, Request, Response};
-use regex::Regex;
 use router::Router;
 use std::collections::HashMap;
 
@@ -76,22 +75,5 @@ pub fn decode_and_return_json(req: &mut Request) -> IronResult<Response> {
 fn get_adc_and_decode(req: &mut Request) -> DeserializedDeck {
     let params = req.extensions.get::<Router>().unwrap();
     let adc = params.find("adc").unwrap();
-    decode(adc)
-}
-// refer to deck_decoder.php for reference implementation
-// https://github.com/ValveSoftware/ArtifactDeserializedDeckCode/
-fn decode(adc: &str) -> DeserializedDeck {
-    let re = Regex::new(r"^ADC").unwrap();
-    let mut stripped_adc = re.replace_all(adc, "");
-    stripped_adc = stripped_adc
-        .chars()
-        .map(|x| match x {
-            '-' => '/',
-            '_' => '=',
-            _ => x,
-        }).collect();
-
-    let adc_string = String::from(stripped_adc);
-    let decoded = base64::decode(&adc_string).unwrap();
-    artifact_serde::parse_deck(adc_string, decoded)
+    artifact_serde::decode(adc)
 }
