@@ -1,6 +1,7 @@
 use iron::{status, IronResult, Request, Response};
 use regex::Regex;
 use router::Router;
+use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
 
@@ -161,53 +162,38 @@ pub fn decode_and_return_cards(req: &mut Request) -> IronResult<Response> {
     };
 
     let sets = vec![card_set_0.card_set, card_set_1.card_set];
+    let mut map = HashMap::<usize, Card>::new();
+    for set in sets {
+        for card in set.card_list {
+            map.insert(card.card_id, card);
+        }
+    }
 
     let heroes = deck.heroes;
     let mut ret_heroes = Vec::<HeroCard>::new();
     for hero in &heroes {
-        for set in &sets {
-            let index = match set
-                .card_list
-                .iter()
-                .position(|ref c| c.card_id == hero.id as usize)
-            {
-                Some(i) => i,
-                None => continue,
-            };
-            let card = match set.card_list.get(index) {
-                Some(c) => c.clone(),
-                None => continue,
-            };
-            ret_heroes.push(HeroCard {
-                card,
-                turn: hero.turn as usize,
-            })
-        }
+        let card = match map.get(&(hero.id as usize)) {
+            Some(c) => c.clone(),
+            None => continue,
+        };
+        ret_heroes.push(HeroCard {
+            card: card,
+            turn: hero.turn as usize,
+        })
     }
 
     let cards = deck.cards;
     let mut ret_cards = Vec::<CardCard>::new();
-    for ccard in &cards {
-        for set in &sets {
-            let index = match set
-                .card_list
-                .iter()
-                .position(|ref c| c.card_id == ccard.id as usize)
-            {
-                Some(i) => i,
-                None => continue,
-            };
+    for card in &cards {
+        let real_card = match map.get(&(card.id as usize)) {
+            Some(c) => c.clone(),
+            None => continue,
+        };
 
-            let card = match set.card_list.get(index) {
-                Some(c) => c.clone(),
-                None => continue,
-            };
-
-            ret_cards.push(CardCard {
-                card,
-                count: ccard.count as usize,
-            })
-        }
+        ret_cards.push(CardCard {
+            card: real_card,
+            count: card.count as usize,
+        })
     }
 
     let ret_deck = Deck {
