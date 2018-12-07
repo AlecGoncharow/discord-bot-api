@@ -53,7 +53,7 @@ fn set_up_deck_map() -> HashMap<usize, artifact_serde::Card> {
     card_file_1.read_to_string(&mut card_set_1).unwrap();
 
     let sets = vec![card_set_0.as_str(), card_set_1.as_str()];
-    artifact_serde::json_to_deck_hashmap(sets)
+    artifact_serde::de::map_card_ids_to_cards(sets).unwrap()
 }
 
 /// Configure and run our server.

@@ -1,3 +1,4 @@
+use artifact_serde::de::*;
 use artifact_serde::*;
 use iron::{status, IronResult, Request, Response};
 use router::Router;
@@ -75,5 +76,5 @@ pub fn decode_and_return_json(req: &mut Request) -> IronResult<Response> {
 fn get_adc_and_decode(req: &mut Request) -> DeserializedDeck {
     let params = req.extensions.get::<Router>().unwrap();
     let adc = params.find("adc").unwrap();
-    artifact_serde::decode(adc)
+    artifact_serde::de::decode(adc).unwrap()
 }
