@@ -2,3 +2,6 @@
 This repo provides the structure to provide a web api for one of my other rust projects, a discord bot. Currently has little to no structure, have implemented base64 decoding of [Artifact](https://www.playartifact.com/) Deck Codes.  
 [Example](https://alec-bots-api.herokuapp.com/artifact/decks/decode/ADCJQQGNrgCCJFBGCC7AhAKBRoMCIwGBksKg0FBLQG7AQhPlRIebWVtZXMy)  
 Which is the same JSON used to generate [this](https://www.playartifact.com/d/ADCJQQGNrgCCJFBGCC7AhAKBRoMCIwGBksKg0FBLQG7AQhPlRIebWVtZXMy)
+
+Now maps decoded Decks to their respective cards:  
+[Example](https://alec-bots-api.herokuapp.com/artifact/decks/deck/ADCJQQGNrgCCJFBGCC7AhAKBRoMCIwGBksKg0FBLQG7AQhPlRIebWVtZXMy)  
