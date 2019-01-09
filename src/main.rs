@@ -4,6 +4,7 @@ extern crate iron;
 extern crate mount;
 extern crate router;
 extern crate staticfile;
+extern crate regex;
 //#[macro_use]
 extern crate artifact_lib;
 extern crate artifact_serde;
@@ -66,6 +67,11 @@ fn main() {
         artifact::decode_and_return_json,
         "adc_decode",
     );
+   router.get(
+        "/tips/key_test/",
+        tip::validate_key_test,
+        "tip_id"
+    );
 
     let map = artifact_lib::Artifact::new();
     router.get(
@@ -73,13 +79,12 @@ fn main() {
         move |request: &mut Request| artifact::decode_and_return_cards(request, &map),
         "adc_deck",
     );
+
     let mut mount = Mount::new();
     // Serve the shared JS/CSS at /static
     mount
         .mount("/", router)
         .mount("/static", Static::new(Path::new("static/")));
-
-    let connection = establish_connection();
 
     // Run the server.
     Iron::new(mount)
