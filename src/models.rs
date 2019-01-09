@@ -3,12 +3,12 @@ pub struct User {
     pub id: u64,
     pub lifetime_gross: i32,
     pub lifetime_net: i32,
-    pub week_gross: i8,
-    pub week_net: i8,
-    pub tips: u8,
-    pub tips_given: u32,
-    pub anti_tips: u8,
-    pub anti_tips_given: u32,
+    pub week_gross: i32,
+    pub week_net: i32,
+    pub tips: i32,
+    pub tips_given: i32,
+    pub anti_tips: i32,
+    pub anti_tips_given: i32,
 }
 
 #[derive(Queryable)]
