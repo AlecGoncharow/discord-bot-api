@@ -6,6 +6,7 @@ use iron::{status, IronResult, Request, Response};
 use regex::Regex;
 use std::boxed::Box;
 use router::Router;
+use std::time::{SystemTime, UNIX_EPOCH};
 use crate::models::{User, Tip};
 
 pub enum KeyState {
@@ -60,6 +61,11 @@ pub fn get_id(req: &mut Request, key: &str) -> Result<i64, <i64 as std::str::Fro
     params.find(key).unwrap().to_string().parse()
 }
 
+pub fn update_user(conn: &PgConnection, user: &User) {
+    use crate::schema::users::dsl::*;
+    diesel::insert_into(users).values(user).execute(conn);
+}
+
 
 pub fn create_user(conn: &PgConnection, provided_id: i64) -> User {
     use crate::schema::users::dsl::*;
@@ -95,6 +101,136 @@ pub fn create_user_view(req: &mut Request) -> IronResult<Response> {
             Ok(resp)
         }
     }
+}
+
+pub enum TipState {
+    Ok(Tip),
+    SameId,
+    NoTips,
+}
+
+pub fn transact_tip_view(req: &mut Request, is_anti: bool) -> IronResult<Response> {
+    let mut resp = Response::new();
+    resp.headers.set(iron::headers::ContentType::plaintext());
+    match validate_key(req) {
+        KeyState::Ok => {
+            match get_id(req, "from") {
+                Ok(from) => {
+                    match get_id(req, "to") {
+                        Ok(to) => {
+                            let conn = crate::establish_connection();
+                            let mut from_user = get_user(&conn, from);
+                            if from_user.len() != 1 {
+                                resp.body = Some(Box::new("Not Found, From User"));
+                                resp.status = Some(status::NotFound);
+                                return Ok(resp);
+                            }
+                            let mut to_user = get_user(&conn, to);
+                            if to_user.len() != 1 {
+                                resp.body = Some(Box::new("Not Found, To User"));
+                                resp.status = Some(status::NotFound);
+                                return Ok(resp);
+                            }
+
+                            if is_anti {
+                                match transact_anti_tip(&conn, &mut from_user[0], &mut to_user[0]) {
+                                    TipState::Ok(tip) => {
+                                        let json_value = serde_json::to_value(&tip).unwrap();
+                                        resp.body = Some(Box::new(json_value.to_string()));
+                                        resp.status = Some(status::Ok);
+                                        resp.headers.set(iron::headers::ContentType::json());
+                                    }
+                                    TipState::NoTips => {
+                                        resp.body = Some(Box::new("No Tips"));
+                                        resp.status = Some(status::NotAcceptable);
+                                    }
+                                    TipState::SameId => {
+                                        resp.body = Some(Box::new("Same ID"));
+                                        resp.status = Some(status::NotAcceptable);
+                                    }
+                                }
+                            }
+
+                            Ok(resp)
+                        }
+                        Err(_) => {
+                            resp.body = Some(Box::new("Bad Request"));
+                            resp.status = Some(status::BadRequest);
+                            Ok(resp)
+                        }
+                    }
+                }
+                Err(_) => {
+                    resp.body = Some(Box::new("Bad Request"));
+                    resp.status = Some(status::BadRequest);
+                    Ok(resp)
+                }
+            }
+        }
+        _ => {
+            resp.body = Some(Box::new("Forbidden"));
+            resp.status = Some(status::Forbidden);
+            Ok(resp)
+        }
+    }
+}
+
+pub fn create_tip(conn: &PgConnection, from: &mut User, to: &mut User, is_anti: bool) -> Tip {
+    use crate::schema::tips::dsl::*;
+    use diesel::dsl::max;
+    let curr_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+    let max = tips.select(max(id)).load::<Tip>(conn).unwrap();
+    let tip = Tip {
+        id: max.id + 1,
+        user_from: from.id,
+        user_to: to.id,
+        time: curr_time.as_secs() as i64,
+        anti: is_anti
+    };
+
+    diesel::insert_into(tips).values(&tip).execute(conn);
+    tip
+}
+
+pub fn transact_tip(conn: &PgConnection, from: &mut User, to: &mut User) -> TipState {
+    if from.id == to.id {
+        return TipState::SameId;
+    }
+    if from.tips < 1 {
+        return TipState::NoTips;
+    }
+
+    from.tips -= 1;
+    from.tips_given += 1;
+    update_user(conn, from);
+
+    to.lifetime_gross += 1;
+    to.lifetime_net += 1;
+    to.week_gross += 1;
+    to.week_net += 1;
+    update_user(conn, to);
+
+    TipState::Ok(create_tip(conn, from, to, false))
+}
+
+pub fn transact_anti_tip(conn: &PgConnection, from: &mut User, to: &mut User) -> TipState {
+    if from.id == to.id {
+        return TipState::SameId;
+    }
+    if from.anti_tips < 1 {
+        return TipState::NoTips;
+    }
+    let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+
+    from.anti_tips -= 1;
+    from.anti_tips_given -= 1;
+    update_user(conn, from);
+
+    to.lifetime_net -= 1;
+    to.week_net -= 1;
+    update_user(conn, to);
+
+    TipState::Ok(create_tip(conn, from, to, true))
 }
 
 pub fn validate_key(req: &mut Request) -> KeyState {

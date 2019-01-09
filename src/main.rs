@@ -85,6 +85,7 @@ fn main() {
         "tip_user_create"
     );
 
+
     match std::env::var("HEROKU") {
         Ok(val) => {
             if val == "true" {
