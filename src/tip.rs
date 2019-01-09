@@ -3,9 +3,15 @@ use diesel::{
     pg::PgConnection,
 };
 use iron::{status, IronResult, Request, Response};
-use router::Router;
 use regex::Regex;
 use std::boxed::Box;
+
+pub enum KeyState {
+    Ok,
+    Invalid,
+    NotI64,
+    MissingVar,
+}
 
 pub fn is_valid_key(conn: &PgConnection, provided_key: i64) -> bool {
     use crate::schema::keys::dsl::*;
@@ -15,45 +21,61 @@ pub fn is_valid_key(conn: &PgConnection, provided_key: i64) -> bool {
     results.len() == 1
 }
 
-pub fn validate_key_test(req: &mut Request) -> IronResult<Response> {
+pub fn validate_key(req: &mut Request) -> KeyState {
     let conn = crate::establish_connection();
-    let mut resp = Response::new();
     let query = req.url.query();
     let key_regex = Regex::new(r"key=([^&]+)").unwrap();
 
     match query {
         Some(q) =>{
-            let caps = key_regex.captures(&q).unwrap();
+            let caps = key_regex.captures(&q);
 
-            if caps.get(1).is_some() {
-                let key: Result<i64, _> = String::from(caps.get(1).unwrap().as_str()).parse();
+            if caps.is_some() {
+                let unwrapped = caps.unwrap();
+                let key: Result<i64, _> = String::from(unwrapped.get(1).unwrap().as_str()).parse();
                 match key {
                     Ok(k) => {
                         if is_valid_key(&conn, k ){
-                            resp.status = Some(status::Ok);
-                            resp.body = Some(Box::new("Valid key"));
+                            KeyState::Ok
                         } else {
-                            resp.status = Some(status::Forbidden);
-                            resp.body = Some(Box::new("Invalid key"))
+                            KeyState::Invalid
                         }
                     }
                     Err(_) => {
-                        resp.status = Some(status::Forbidden);
-                        resp.body = Some(Box::new("Key must be an integer"));
+                        KeyState::NotI64
                     }
                 }
-
             } else {
-                resp.body = Some(Box::new("No key query variable"));
+                KeyState::MissingVar
             }
-            resp.headers.set(iron::headers::ContentType::plaintext());
-            Ok(resp)
         }
         None => {
-            resp.body = Some(Box::new("Requires key query param"));
-            resp.status = Some(status::Forbidden);
-            resp.headers.set(iron::headers::ContentType::plaintext());
-            Ok(resp)
+            KeyState::MissingVar
         }
     }
+}
+
+pub fn validate_key_test(req: &mut Request) -> IronResult<Response> {
+    let state = validate_key(req);
+    let mut resp = Response::new();
+    resp.headers.set(iron::headers::ContentType::plaintext());
+
+    match state {
+        KeyState::Ok => {
+            resp.status = Some(status::Ok);
+            resp.body = Some(Box::new("Valid key"));
+        }
+        KeyState::Invalid => {
+            resp.status = Some(status::Forbidden);
+            resp.body = Some(Box::new("Invalid key"))
+        }
+        KeyState::NotI64 => {
+            resp.status = Some(status::Forbidden);
+            resp.body = Some(Box::new("Key must be an integer"));
+        }
+        KeyState::MissingVar => {
+            resp.body = Some(Box::new("No key query variable"));
+        }
+    }
+    Ok(resp)
 }
