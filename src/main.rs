@@ -73,6 +73,17 @@ fn main() {
         "tip_id"
     );
 
+    match std::env::var("HEROKU") {
+        Ok(val) => {
+            if val == "true" {
+                match std::fs::create_dir("/app/.cache/") {
+                    Ok (_) => println!("Cache created"),
+                    Err(e) => panic!(format!("error creating cache: {}", e)),
+                }
+            }
+        }
+        Err(_) => {}
+    }
     let map = artifact_lib::Artifact::new();
     router.get(
         "/artifact/decks/deck/:adc",
