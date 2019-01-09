@@ -1,56 +1,13 @@
-use artifact_serde::de::*;
-use artifact_serde::*;
 use iron::{status, IronResult, Request, Response};
 use router::Router;
-use std::collections::HashMap;
 
 pub fn decode_and_return_cards(
     req: &mut Request,
-    map: &HashMap<usize, Card>,
+    map: &artifact_lib::Artifact,
 ) -> IronResult<Response> {
-    let deck = get_adc_and_decode(req);
+    let deck = map.get_deck(&get_adc(req));
 
-    let heroes = deck.heroes;
-    let mut cards = deck.cards;
-    let mut ret_heroes = Vec::<HeroCard>::new();
-    for hero in &heroes {
-        let card = match map.get(&(hero.id as usize)) {
-            Some(c) => c.clone(),
-            None => continue,
-        };
-        let refer = card.references.clone();
-        for r in refer {
-            if r.ref_type == "includes" {
-                cards.push(DeserializedCard {
-                    id: r.card_id,
-                    count: r.count,
-                });
-            }
-        }
-        ret_heroes.push(HeroCard {
-            card: card,
-            turn: hero.turn as usize,
-        })
-    }
-
-    let mut ret_cards = Vec::<CardCard>::new();
-    for card in &cards {
-        let real_card = match map.get(&(card.id as usize)) {
-            Some(c) => c.clone(),
-            None => continue,
-        };
-
-        ret_cards.push(CardCard {
-            card: real_card,
-            count: card.count as usize,
-        })
-    }
-
-    let ret_deck = Deck {
-        name: deck.name,
-        heroes: ret_heroes,
-        cards: ret_cards,
-    };
+    let ret_deck = deck.unwrap();
 
     let json_deck = serde_json::to_value(&ret_deck).unwrap();
     let mut resp = Response::new();
@@ -62,7 +19,7 @@ pub fn decode_and_return_cards(
 }
 
 pub fn decode_and_return_json(req: &mut Request) -> IronResult<Response> {
-    let deck = get_adc_and_decode(req);
+    let deck = artifact_serde::decode(&get_adc(req)).unwrap();
     let json_deck = serde_json::to_value(&deck).unwrap();
 
     let mut resp = Response::new();
@@ -73,8 +30,7 @@ pub fn decode_and_return_json(req: &mut Request) -> IronResult<Response> {
     Ok(resp)
 }
 
-fn get_adc_and_decode(req: &mut Request) -> DeserializedDeck {
+fn get_adc(req: &mut Request) -> String {
     let params = req.extensions.get::<Router>().unwrap();
-    let adc = params.find("adc").unwrap();
-    artifact_serde::de::decode(adc).unwrap()
+    params.find("adc").unwrap().to_string()
 }
