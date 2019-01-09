@@ -5,6 +5,8 @@ use diesel::{
 use iron::{status, IronResult, Request, Response};
 use regex::Regex;
 use std::boxed::Box;
+use router::Router;
+use crate::models::{User, Tip};
 
 pub enum KeyState {
     Ok,
@@ -19,6 +21,80 @@ pub fn is_valid_key(conn: &PgConnection, provided_key: i64) -> bool {
         .load::<crate::models::Key>(conn)
         .expect("help");
     results.len() == 1
+}
+
+pub fn get_user(conn: &PgConnection, provided_id: i64) -> Vec<User> {
+    use crate::schema::users::dsl::*;
+    users.find(provided_id)
+        .load::<User>(conn)
+        .expect("Error loading users")
+}
+
+pub fn get_user_view(req: &mut Request) -> IronResult<Response> {
+    let conn = crate::establish_connection();
+    let mut resp = Response::new();
+    match get_id(req, "user") {
+        Ok(val) => {
+            let user = get_user(&conn, val);
+            if user.len() == 1 {
+                let json_value = serde_json::to_value(&user[0]).unwrap();
+                resp.body = Some(Box::new(json_value.to_string()));
+                resp.status = Some(status::Ok);
+                resp.headers.set(iron::headers::ContentType::json());
+
+                Ok(resp)
+            } else {
+                resp.status = Some(status::NotFound);
+                Ok(resp)
+            }
+        }
+        Err(_) =>{
+            resp.status = Some(status::BadRequest);
+            Ok(resp)
+        }
+    }
+}
+
+pub fn get_id(req: &mut Request, key: &str) -> Result<i64, <i64 as std::str::FromStr>::Err> {
+    let params = req.extensions.get::<Router>().unwrap();
+    params.find(key).unwrap().to_string().parse()
+}
+
+
+pub fn create_user(conn: &PgConnection, provided_id: i64) -> User {
+    use crate::schema::users::dsl::*;
+    let mut user = User::default();
+    user.id = provided_id;
+    diesel::insert_into(users).values(&user).execute(conn);
+    user
+}
+
+pub fn create_user_view(req: &mut Request) -> IronResult<Response> {
+    let mut resp = Response::new();
+    resp.headers.set(iron::headers::ContentType::plaintext());
+    match validate_key(req) {
+        KeyState::Ok => {
+            match get_id(req, "user") {
+                Ok(val) => {
+                    let conn = crate::establish_connection();
+                    create_user(&conn, val);
+                    resp.body = Some(Box::new("User Created!"));
+                    resp.status = Some(status::Ok);
+                    Ok(resp)
+                }
+                Err(_) => {
+                    resp.body = Some(Box::new("Bad Request"));
+                    resp.status = Some(status::BadRequest);
+                    Ok(resp)
+                }
+            }
+        }
+        _ => {
+            resp.body = Some(Box::new("Forbidden"));
+            resp.status = Some(status::Forbidden);
+            Ok(resp)
+        }
+    }
 }
 
 pub fn validate_key(req: &mut Request) -> KeyState {

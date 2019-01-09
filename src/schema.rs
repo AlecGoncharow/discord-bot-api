@@ -17,14 +17,14 @@ table! {
 table! {
     users (id) {
         id -> Int8,
-        lifetime_gross -> Nullable<Int4>,
-        lifetime_net -> Nullable<Int4>,
-        week_gross -> Nullable<Int4>,
-        week_net -> Nullable<Int4>,
-        tips -> Nullable<Int4>,
-        tips_given -> Nullable<Int4>,
-        anti_tips -> Nullable<Int4>,
-        anti_tips_given -> Nullable<Int4>,
+        lifetime_gross -> Int4,
+        lifetime_net -> Int4,
+        week_gross -> Int4,
+        week_net -> Int4,
+        tips -> Int4,
+        tips_given -> Int4,
+        anti_tips -> Int4,
+        anti_tips_given -> Int4,
     }
 }
 

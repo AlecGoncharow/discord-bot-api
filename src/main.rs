@@ -8,6 +8,7 @@ extern crate regex;
 //#[macro_use]
 extern crate artifact_lib;
 extern crate artifact_serde;
+#[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
 #[macro_use]
@@ -72,6 +73,17 @@ fn main() {
         tip::validate_key_test,
         "tip_id"
     );
+   router.get(
+        "/tips/:user/",
+        tip::get_user_view,
+        "tip_user"
+    );
+
+    router.get(
+        "/tips/create/:user",
+        tip::create_user_view,
+        "tip_user_create"
+    );
 
     match std::env::var("HEROKU") {
         Ok(val) => {
@@ -84,6 +96,11 @@ fn main() {
         }
         Err(_) => {}
     }
+
+    let connection = establish_connection();
+    tip::create_user(&connection, 25);
+    tip::get_user(&connection, 25);
+
     let map = artifact_lib::Artifact::new();
     router.get(
         "/artifact/decks/deck/:adc",
