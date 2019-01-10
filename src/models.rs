@@ -1,9 +1,9 @@
-use schema::{users, tips};
+use schema::{tips, users};
 pub const WEEKLY_TIPS: i32 = 7;
 pub const WEEKLY_ANTI_TIPS: i32 = 1;
 
 #[derive(Queryable, Insertable, Debug, Serialize)]
-#[table_name="users"]
+#[table_name = "users"]
 pub struct User {
     pub id: i64,
     pub lifetime_gross: i32,
@@ -33,7 +33,7 @@ impl Default for User {
 }
 
 #[derive(Queryable, Insertable, Debug, Serialize)]
-#[table_name="tips"]
+#[table_name = "tips"]
 pub struct Tip {
     pub id: i32,
     pub user_from: i64,
@@ -44,5 +44,5 @@ pub struct Tip {
 
 #[derive(Queryable)]
 pub struct Key {
-    pub key: i64
+    pub key: i64,
 }

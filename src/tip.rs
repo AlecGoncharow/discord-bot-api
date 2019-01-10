@@ -1,13 +1,10 @@
-use diesel::{
-    prelude::*,
-    pg::PgConnection,
-};
+use crate::models::{Tip, User};
+use diesel::{pg::PgConnection, prelude::*};
 use iron::{status, IronResult, Request, Response};
 use regex::Regex;
-use std::boxed::Box;
 use router::Router;
+use std::boxed::Box;
 use std::time::{SystemTime, UNIX_EPOCH};
-use crate::models::{User, Tip};
 
 pub enum KeyState {
     Ok,
@@ -18,7 +15,8 @@ pub enum KeyState {
 
 pub fn is_valid_key(conn: &PgConnection, provided_key: i64) -> bool {
     use crate::schema::keys::dsl::*;
-    let results = keys.find(provided_key)
+    let results = keys
+        .find(provided_key)
         .load::<crate::models::Key>(conn)
         .expect("help");
     results.len() == 1
@@ -26,7 +24,8 @@ pub fn is_valid_key(conn: &PgConnection, provided_key: i64) -> bool {
 
 pub fn get_user(conn: &PgConnection, provided_id: i64) -> Vec<User> {
     use crate::schema::users::dsl::*;
-    users.find(provided_id)
+    users
+        .find(provided_id)
         .load::<User>(conn)
         .expect("Error loading users")
 }
@@ -49,7 +48,7 @@ pub fn get_user_view(req: &mut Request) -> IronResult<Response> {
                 Ok(resp)
             }
         }
-        Err(_) =>{
+        Err(_) => {
             resp.status = Some(status::BadRequest);
             Ok(resp)
         }
@@ -63,18 +62,20 @@ pub fn get_id(req: &mut Request, key: &str) -> Result<i64, <i64 as std::str::Fro
 
 pub fn update_user(conn: &PgConnection, user: &User) {
     use crate::schema::users::dsl::*;
-    diesel::update(users).filter(id.eq(user.id)).set((
-        lifetime_net.eq(user.lifetime_net),
-        lifetime_gross.eq(user.lifetime_gross),
-        week_net.eq(user.week_net),
-        week_gross.eq(user.week_gross),
-        tips.eq(user.tips),
-        tips_given.eq(user.tips_given),
-        anti_tips.eq(user.anti_tips),
-        anti_tips_given.eq(user.anti_tips_given))
-    ).execute(conn);
+    diesel::update(users)
+        .filter(id.eq(user.id))
+        .set((
+            lifetime_net.eq(user.lifetime_net),
+            lifetime_gross.eq(user.lifetime_gross),
+            week_net.eq(user.week_net),
+            week_gross.eq(user.week_gross),
+            tips.eq(user.tips),
+            tips_given.eq(user.tips_given),
+            anti_tips.eq(user.anti_tips),
+            anti_tips_given.eq(user.anti_tips_given),
+        ))
+        .execute(conn);
 }
-
 
 pub fn create_user(conn: &PgConnection, provided_id: i64) -> User {
     use crate::schema::users::dsl::*;
@@ -88,22 +89,20 @@ pub fn create_user_view(req: &mut Request) -> IronResult<Response> {
     let mut resp = Response::new();
     resp.headers.set(iron::headers::ContentType::plaintext());
     match validate_key(req) {
-        KeyState::Ok => {
-            match get_id(req, "user") {
-                Ok(val) => {
-                    let conn = crate::establish_connection();
-                    create_user(&conn, val);
-                    resp.body = Some(Box::new("User Created!"));
-                    resp.status = Some(status::Ok);
-                    Ok(resp)
-                }
-                Err(_) => {
-                    resp.body = Some(Box::new("Bad Request"));
-                    resp.status = Some(status::BadRequest);
-                    Ok(resp)
-                }
+        KeyState::Ok => match get_id(req, "user") {
+            Ok(val) => {
+                let conn = crate::establish_connection();
+                create_user(&conn, val);
+                resp.body = Some(Box::new("User Created!"));
+                resp.status = Some(status::Ok);
+                Ok(resp)
             }
-        }
+            Err(_) => {
+                resp.body = Some(Box::new("Bad Request"));
+                resp.status = Some(status::BadRequest);
+                Ok(resp)
+            }
+        },
         _ => {
             resp.body = Some(Box::new("Forbidden"));
             resp.status = Some(status::Forbidden);
@@ -115,11 +114,10 @@ pub fn create_user_view(req: &mut Request) -> IronResult<Response> {
 pub fn set_tips(conn: &PgConnection, provided_id: i64, new_tips: i32) {
     use crate::schema::users::dsl::*;
     if provided_id == -1 {
-        diesel::update(users)
-            .set(tips.eq(new_tips))
-            .execute(conn);
+        diesel::update(users).set(tips.eq(new_tips)).execute(conn);
     } else {
-        diesel::update(users).filter(id.eq(provided_id))
+        diesel::update(users)
+            .filter(id.eq(provided_id))
             .set(tips.eq(new_tips))
             .execute(conn);
     }
@@ -132,7 +130,8 @@ pub fn set_anti_tips(conn: &PgConnection, provided_id: i64, new_tips: i32) {
             .set(anti_tips.eq(new_tips))
             .execute(conn);
     } else {
-        diesel::update(users).filter(id.eq(provided_id))
+        diesel::update(users)
+            .filter(id.eq(provided_id))
             .set(anti_tips.eq(new_tips))
             .execute(conn);
     }
@@ -142,35 +141,31 @@ pub fn set_tips_view(req: &mut Request, is_anti: bool) -> IronResult<Response> {
     let mut resp = Response::new();
     resp.headers.set(iron::headers::ContentType::plaintext());
     match validate_key(req) {
-        KeyState::Ok => {
-            match get_id(req, "user") {
-                Ok(user) => {
-                    match get_id(req, "val") {
-                        Ok(val) => {
-                            let conn = crate::establish_connection();
-                            if is_anti {
-                                set_anti_tips(&conn, user, val as i32);
-                            } else {
-                                set_tips(&conn, user, val as i32);
-                            }
-                            resp.body = Some(Box::new("Tips set"));
-                            resp.status = Some(status::Ok);
-                            Ok(resp)
-                        }
-                        Err(_) => {
-                            resp.body = Some(Box::new("Bad Request"));
-                            resp.status = Some(status::BadRequest);
-                            Ok(resp)
-                        }
+        KeyState::Ok => match get_id(req, "user") {
+            Ok(user) => match get_id(req, "val") {
+                Ok(val) => {
+                    let conn = crate::establish_connection();
+                    if is_anti {
+                        set_anti_tips(&conn, user, val as i32);
+                    } else {
+                        set_tips(&conn, user, val as i32);
                     }
+                    resp.body = Some(Box::new("Tips set"));
+                    resp.status = Some(status::Ok);
+                    Ok(resp)
                 }
                 Err(_) => {
                     resp.body = Some(Box::new("Bad Request"));
                     resp.status = Some(status::BadRequest);
                     Ok(resp)
                 }
+            },
+            Err(_) => {
+                resp.body = Some(Box::new("Bad Request"));
+                resp.status = Some(status::BadRequest);
+                Ok(resp)
             }
-        }
+        },
         _ => {
             resp.body = Some(Box::new("Forbidden"));
             resp.status = Some(status::Forbidden);
@@ -189,77 +184,73 @@ pub fn transact_tip_view(req: &mut Request, is_anti: bool) -> IronResult<Respons
     let mut resp = Response::new();
     resp.headers.set(iron::headers::ContentType::plaintext());
     match validate_key(req) {
-        KeyState::Ok => {
-            match get_id(req, "from") {
-                Ok(from) => {
-                    match get_id(req, "to") {
-                        Ok(to) => {
-                            let conn = crate::establish_connection();
-                            let mut from_user = get_user(&conn, from);
-                            if from_user.len() != 1 {
-                                resp.body = Some(Box::new("Not Found, From User"));
-                                resp.status = Some(status::NotFound);
-                                return Ok(resp);
-                            }
-                            let mut to_user = get_user(&conn, to);
-                            if to_user.len() != 1 {
-                                resp.body = Some(Box::new("Not Found, To User"));
-                                resp.status = Some(status::NotFound);
-                                return Ok(resp);
-                            }
+        KeyState::Ok => match get_id(req, "from") {
+            Ok(from) => match get_id(req, "to") {
+                Ok(to) => {
+                    let conn = crate::establish_connection();
+                    let mut from_user = get_user(&conn, from);
+                    if from_user.len() != 1 {
+                        resp.body = Some(Box::new("Not Found, From User"));
+                        resp.status = Some(status::NotFound);
+                        return Ok(resp);
+                    }
+                    let mut to_user = get_user(&conn, to);
+                    if to_user.len() != 1 {
+                        resp.body = Some(Box::new("Not Found, To User"));
+                        resp.status = Some(status::NotFound);
+                        return Ok(resp);
+                    }
 
-                            if is_anti {
-                                match transact_anti_tip(&conn, &mut from_user[0], &mut to_user[0]) {
-                                    TipState::Ok(tip) => {
-                                        let json_value = serde_json::to_value(&tip).unwrap();
-                                        resp.body = Some(Box::new(json_value.to_string()));
-                                        resp.status = Some(status::Ok);
-                                        resp.headers.set(iron::headers::ContentType::json());
-                                    }
-                                    TipState::NoTips => {
-                                        resp.body = Some(Box::new("No Tips"));
-                                        resp.status = Some(status::NotAcceptable);
-                                    }
-                                    TipState::SameId => {
-                                        resp.body = Some(Box::new("Same ID"));
-                                        resp.status = Some(status::NotAcceptable);
-                                    }
-                                }
-                            } else {
-                                match transact_tip(&conn, &mut from_user[0], &mut to_user[0]) {
-                                    TipState::Ok(tip) => {
-                                        let json_value = serde_json::to_value(&tip).unwrap();
-                                        resp.body = Some(Box::new(json_value.to_string()));
-                                        resp.status = Some(status::Ok);
-                                        resp.headers.set(iron::headers::ContentType::json());
-                                    }
-                                    TipState::NoTips => {
-                                        resp.body = Some(Box::new("No Tips"));
-                                        resp.status = Some(status::NotAcceptable);
-                                    }
-                                    TipState::SameId => {
-                                        resp.body = Some(Box::new("Same ID"));
-                                        resp.status = Some(status::NotAcceptable);
-                                    }
-                                }
+                    if is_anti {
+                        match transact_anti_tip(&conn, &mut from_user[0], &mut to_user[0]) {
+                            TipState::Ok(tip) => {
+                                let json_value = serde_json::to_value(&tip).unwrap();
+                                resp.body = Some(Box::new(json_value.to_string()));
+                                resp.status = Some(status::Ok);
+                                resp.headers.set(iron::headers::ContentType::json());
                             }
-
-                            Ok(resp)
+                            TipState::NoTips => {
+                                resp.body = Some(Box::new("No Tips"));
+                                resp.status = Some(status::NotAcceptable);
+                            }
+                            TipState::SameId => {
+                                resp.body = Some(Box::new("Same ID"));
+                                resp.status = Some(status::NotAcceptable);
+                            }
                         }
-                        Err(_) => {
-                            resp.body = Some(Box::new("Bad Request"));
-                            resp.status = Some(status::BadRequest);
-                            Ok(resp)
+                    } else {
+                        match transact_tip(&conn, &mut from_user[0], &mut to_user[0]) {
+                            TipState::Ok(tip) => {
+                                let json_value = serde_json::to_value(&tip).unwrap();
+                                resp.body = Some(Box::new(json_value.to_string()));
+                                resp.status = Some(status::Ok);
+                                resp.headers.set(iron::headers::ContentType::json());
+                            }
+                            TipState::NoTips => {
+                                resp.body = Some(Box::new("No Tips"));
+                                resp.status = Some(status::NotAcceptable);
+                            }
+                            TipState::SameId => {
+                                resp.body = Some(Box::new("Same ID"));
+                                resp.status = Some(status::NotAcceptable);
+                            }
                         }
                     }
+
+                    Ok(resp)
                 }
                 Err(_) => {
                     resp.body = Some(Box::new("Bad Request"));
                     resp.status = Some(status::BadRequest);
                     Ok(resp)
                 }
+            },
+            Err(_) => {
+                resp.body = Some(Box::new("Bad Request"));
+                resp.status = Some(status::BadRequest);
+                Ok(resp)
             }
-        }
+        },
         _ => {
             resp.body = Some(Box::new("Forbidden"));
             resp.status = Some(status::Forbidden);
@@ -270,10 +261,11 @@ pub fn transact_tip_view(req: &mut Request, is_anti: bool) -> IronResult<Respons
 
 pub fn create_tip(conn: &PgConnection, from: &mut User, to: &mut User, is_anti: bool) -> Tip {
     use crate::schema::tips::dsl::*;
-    use crate::schema::tips;
-    use diesel::dsl::max;
     let curr_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-    let res = tips.filter(id.ne(0)).load::<Tip>(conn).expect("Error reading tips");
+    let res = tips
+        .filter(id.ne(0))
+        .load::<Tip>(conn)
+        .expect("Error reading tips");
     let tip_id = if res.len() == 0 {
         1
     } else {
@@ -284,7 +276,7 @@ pub fn create_tip(conn: &PgConnection, from: &mut User, to: &mut User, is_anti: 
         user_from: from.id,
         user_to: to.id,
         time: curr_time.as_secs() as i64,
-        anti: is_anti
+        anti: is_anti,
     };
 
     diesel::insert_into(tips).values(&tip).execute(conn);
@@ -338,7 +330,7 @@ pub fn validate_key(req: &mut Request) -> KeyState {
     let key_regex = Regex::new(r"key=([^&]+)").unwrap();
 
     match query {
-        Some(q) =>{
+        Some(q) => {
             let caps = key_regex.captures(&q);
 
             if caps.is_some() {
@@ -346,23 +338,19 @@ pub fn validate_key(req: &mut Request) -> KeyState {
                 let key: Result<i64, _> = String::from(unwrapped.get(1).unwrap().as_str()).parse();
                 match key {
                     Ok(k) => {
-                        if is_valid_key(&conn, k ){
+                        if is_valid_key(&conn, k) {
                             KeyState::Ok
                         } else {
                             KeyState::Invalid
                         }
                     }
-                    Err(_) => {
-                        KeyState::NotI64
-                    }
+                    Err(_) => KeyState::NotI64,
                 }
             } else {
                 KeyState::MissingVar
             }
         }
-        None => {
-            KeyState::MissingVar
-        }
+        None => KeyState::MissingVar,
     }
 }
 

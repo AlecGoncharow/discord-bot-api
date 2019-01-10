@@ -2,9 +2,9 @@
 extern crate base64;
 extern crate iron;
 extern crate mount;
+extern crate regex;
 extern crate router;
 extern crate staticfile;
-extern crate regex;
 //#[macro_use]
 extern crate artifact_lib;
 extern crate artifact_serde;
@@ -14,8 +14,8 @@ extern crate serde_json;
 #[macro_use]
 extern crate diesel;
 mod artifact;
-pub mod schema;
 pub mod models;
+pub mod schema;
 pub mod tip;
 
 use iron::{status, Iron, IronResult, Request, Response};
@@ -25,10 +25,7 @@ use staticfile::Static;
 use std::env;
 use std::path::Path;
 
-use diesel::{
-    prelude::*,
-    pg::PgConnection,
-};
+use diesel::{pg::PgConnection, prelude::*};
 // Serves a string to the user.  Try accessing "/".
 fn hello(_: &mut Request) -> IronResult<Response> {
     let resp = Response::with((status::Ok, "Hello world!"));
@@ -68,51 +65,43 @@ fn main() {
         artifact::decode_and_return_json,
         "adc_decode",
     );
-   router.get(
-        "/tips/key_test/",
-        tip::validate_key_test,
-        "tip_id"
-    );
-   router.get(
-        "/tips/:user/",
-        tip::get_user_view,
-        "tip_user"
-    );
+    router.get("/tips/key_test/", tip::validate_key_test, "tip_id");
+    router.get("/tips/:user/", tip::get_user_view, "tip_user");
 
     router.get(
         "/tips/create/:user",
         tip::create_user_view,
-        "tip_user_create"
+        "tip_user_create",
     );
 
     router.get(
         "/tips/set_tips/:user/:val",
         move |request: &mut Request| tip::set_tips_view(request, false),
-        "set_tips"
+        "set_tips",
     );
 
     router.get(
         "/tips/set_anti_tips/:user/:val",
         move |request: &mut Request| tip::set_tips_view(request, true),
-        "set_anti_tips"
+        "set_anti_tips",
     );
 
     router.get(
         "/tips/tip/:from/:to",
         move |request: &mut Request| tip::transact_tip_view(request, false),
-        "tip_from_to"
+        "tip_from_to",
     );
     router.get(
         "/tips/anti_tip/:from/:to",
         move |request: &mut Request| tip::transact_tip_view(request, true),
-        "anti_tip_from_to"
+        "anti_tip_from_to",
     );
 
     match std::env::var("HEROKU") {
         Ok(val) => {
             if val == "true" {
                 match std::fs::create_dir("/app/.cache/") {
-                    Ok (_) => println!("Cache created"),
+                    Ok(_) => println!("Cache created"),
                     Err(e) => panic!(format!("error creating cache: {}", e)),
                 }
             }
