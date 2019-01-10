@@ -114,16 +114,28 @@ pub fn create_user_view(req: &mut Request) -> IronResult<Response> {
 
 pub fn set_tips(conn: &PgConnection, provided_id: i64, new_tips: i32) {
     use crate::schema::users::dsl::*;
-    diesel::update(users).filter(id.eq(provided_id))
-        .set(tips.eq(new_tips))
-        .execute(conn);
+    if provided_id == -1 {
+        diesel::update(users)
+            .set(tips.eq(new_tips))
+            .execute(conn);
+    } else {
+        diesel::update(users).filter(id.eq(provided_id))
+            .set(tips.eq(new_tips))
+            .execute(conn);
+    }
 }
 
 pub fn set_anti_tips(conn: &PgConnection, provided_id: i64, new_tips: i32) {
     use crate::schema::users::dsl::*;
-    diesel::update(users).filter(id.eq(provided_id))
-        .set(anti_tips.eq(new_tips))
-        .execute(conn);
+    if provided_id == -1 {
+        diesel::update(users)
+            .set(anti_tips.eq(new_tips))
+            .execute(conn);
+    } else {
+        diesel::update(users).filter(id.eq(provided_id))
+            .set(anti_tips.eq(new_tips))
+            .execute(conn);
+    }
 }
 
 pub fn set_tips_view(req: &mut Request, is_anti: bool) -> IronResult<Response> {
