@@ -66,6 +66,7 @@ pub fn update_user(conn: &PgConnection, user: &User) {
     diesel::update(users).filter(id.eq(user.id)).set((
         lifetime_net.eq(user.lifetime_net),
         lifetime_gross.eq(user.lifetime_gross),
+        week_net.eq(user.week_net),
         week_gross.eq(user.week_gross),
         tips.eq(user.tips),
         tips_given.eq(user.tips_given),
