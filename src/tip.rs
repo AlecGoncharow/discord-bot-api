@@ -63,7 +63,15 @@ pub fn get_id(req: &mut Request, key: &str) -> Result<i64, <i64 as std::str::Fro
 
 pub fn update_user(conn: &PgConnection, user: &User) {
     use crate::schema::users::dsl::*;
-    diesel::insert_into(users).values(user).execute(conn);
+    diesel::update(users).filter(id.eq(user.id)).set((
+        lifetime_net.eq(user.lifetime_net),
+        lifetime_gross.eq(user.lifetime_gross),
+        week_gross.eq(user.week_gross),
+        tips.eq(user.tips),
+        tips_given.eq(user.tips_given),
+        anti_tips.eq(user.anti_tips),
+        anti_tips_given.eq(user.anti_tips_given))
+    ).execute(conn);
 }
 
 
@@ -149,6 +157,23 @@ pub fn transact_tip_view(req: &mut Request, is_anti: bool) -> IronResult<Respons
                                         resp.status = Some(status::NotAcceptable);
                                     }
                                 }
+                            } else {
+                                match transact_tip(&conn, &mut from_user[0], &mut to_user[0]) {
+                                    TipState::Ok(tip) => {
+                                        let json_value = serde_json::to_value(&tip).unwrap();
+                                        resp.body = Some(Box::new(json_value.to_string()));
+                                        resp.status = Some(status::Ok);
+                                        resp.headers.set(iron::headers::ContentType::json());
+                                    }
+                                    TipState::NoTips => {
+                                        resp.body = Some(Box::new("No Tips"));
+                                        resp.status = Some(status::NotAcceptable);
+                                    }
+                                    TipState::SameId => {
+                                        resp.body = Some(Box::new("Same ID"));
+                                        resp.status = Some(status::NotAcceptable);
+                                    }
+                                }
                             }
 
                             Ok(resp)
@@ -177,11 +202,17 @@ pub fn transact_tip_view(req: &mut Request, is_anti: bool) -> IronResult<Respons
 
 pub fn create_tip(conn: &PgConnection, from: &mut User, to: &mut User, is_anti: bool) -> Tip {
     use crate::schema::tips::dsl::*;
+    use crate::schema::tips;
     use diesel::dsl::max;
     let curr_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-    let max = tips.select(max(id)).load::<Tip>(conn).unwrap();
+    let res = tips.filter(id.ne(0)).load::<Tip>(conn).expect("Error reading tips");
+    let tip_id = if res.len() == 0 {
+        1
+    } else {
+        res.iter().max_by(|x, y| x.id.cmp(&y.id)).unwrap().id + 1
+    };
     let tip = Tip {
-        id: max.id + 1,
+        id: tip_id,
         user_from: from.id,
         user_to: to.id,
         time: curr_time.as_secs() as i64,
@@ -223,7 +254,7 @@ pub fn transact_anti_tip(conn: &PgConnection, from: &mut User, to: &mut User) ->
     let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
 
     from.anti_tips -= 1;
-    from.anti_tips_given -= 1;
+    from.anti_tips_given += 1;
     update_user(conn, from);
 
     to.lifetime_net -= 1;

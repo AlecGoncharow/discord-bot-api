@@ -85,6 +85,22 @@ fn main() {
         "tip_user_create"
     );
 
+    router.get(
+        "/tips/create/:user",
+        tip::create_user_view,
+        "tip_user_create"
+    );
+
+    router.get(
+        "/tips/tip/:from/:to",
+        move |request: &mut Request| tip::transact_tip_view(request, false),
+        "tip_from_to"
+    );
+    router.get(
+        "/tips/anti_tip/:from/:to",
+        move |request: &mut Request| tip::transact_tip_view(request, true),
+        "anti_tip_from_to"
+    );
 
     match std::env::var("HEROKU") {
         Ok(val) => {
