@@ -86,9 +86,15 @@ fn main() {
     );
 
     router.get(
-        "/tips/create/:user",
-        tip::create_user_view,
-        "tip_user_create"
+        "/tips/set_tips/:user/:val",
+        move |request: &mut Request| tip::set_tips_view(request, false),
+        "set_tips"
+    );
+
+    router.get(
+        "/tips/set_anti_tips/:user/:val",
+        move |request: &mut Request| tip::set_tips_view(request, true),
+        "set_anti_tips"
     );
 
     router.get(

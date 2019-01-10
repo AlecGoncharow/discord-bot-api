@@ -112,6 +112,61 @@ pub fn create_user_view(req: &mut Request) -> IronResult<Response> {
     }
 }
 
+pub fn set_tips(conn: &PgConnection, provided_id: i64, new_tips: i32) {
+    use crate::schema::users::dsl::*;
+    diesel::update(users).filter(id.eq(provided_id))
+        .set(tips.eq(new_tips))
+        .execute(conn);
+}
+
+pub fn set_anti_tips(conn: &PgConnection, provided_id: i64, new_tips: i32) {
+    use crate::schema::users::dsl::*;
+    diesel::update(users).filter(id.eq(provided_id))
+        .set(anti_tips.eq(new_tips))
+        .execute(conn);
+}
+
+pub fn set_tips_view(req: &mut Request, is_anti: bool) -> IronResult<Response> {
+    let mut resp = Response::new();
+    resp.headers.set(iron::headers::ContentType::plaintext());
+    match validate_key(req) {
+        KeyState::Ok => {
+            match get_id(req, "user") {
+                Ok(user) => {
+                    match get_id(req, "val") {
+                        Ok(val) => {
+                            let conn = crate::establish_connection();
+                            if is_anti {
+                                set_anti_tips(&conn, user, val as i32);
+                            } else {
+                                set_tips(&conn, user, val as i32);
+                            }
+                            resp.body = Some(Box::new("Tips set"));
+                            resp.status = Some(status::Ok);
+                            Ok(resp)
+                        }
+                        Err(_) => {
+                            resp.body = Some(Box::new("Bad Request"));
+                            resp.status = Some(status::BadRequest);
+                            Ok(resp)
+                        }
+                    }
+                }
+                Err(_) => {
+                    resp.body = Some(Box::new("Bad Request"));
+                    resp.status = Some(status::BadRequest);
+                    Ok(resp)
+                }
+            }
+        }
+        _ => {
+            resp.body = Some(Box::new("Forbidden"));
+            resp.status = Some(status::Forbidden);
+            Ok(resp)
+        }
+    }
+}
+
 pub enum TipState {
     Ok(Tip),
     SameId,
