@@ -66,22 +66,22 @@ fn main() {
         "adc_decode",
     );
     router.get("/tips/key_test/", tip::validate_key_test, "tip_id");
-    router.get("/tips/:user/", tip::get_user_view, "tip_user");
+    router.get("/tips/user/:user/", tip::get_user_view, "tip_user");
 
     router.get(
-        "/tips/create/:user",
+        "/tips/user/create/:user",
         tip::create_user_view,
         "tip_user_create",
     );
 
     router.get(
-        "/tips/set_tips/:user/:val",
+        "/tips/user/:user/set_tips/:val",
         move |request: &mut Request| tip::set_tips_view(request, false),
         "set_tips",
     );
 
     router.get(
-        "/tips/set_anti_tips/:user/:val",
+        "/tips/user/:user/set_anti_tips/:val",
         move |request: &mut Request| tip::set_tips_view(request, true),
         "set_anti_tips",
     );

@@ -1,5 +1,5 @@
 use schema::{tips, users};
-pub const WEEKLY_TIPS: i32 = 7;
+pub const WEEKLY_TIPS: i32 = 10;
 pub const WEEKLY_ANTI_TIPS: i32 = 1;
 
 #[derive(Queryable, Insertable, Debug, Serialize)]

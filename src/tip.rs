@@ -311,6 +311,12 @@ pub fn transact_anti_tip(conn: &PgConnection, from: &mut User, to: &mut User) ->
     if from.anti_tips < 1 {
         return TipState::NoTips;
     }
+    if to.lifetime_net == 0 {
+        return TipState::NoTips;
+    }
+    if to.week_net == 0 {
+        return TipState::NoTips;
+    }
     let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
 
     from.anti_tips -= 1;
