@@ -330,6 +330,40 @@ pub fn transact_anti_tip(conn: &PgConnection, from: &mut User, to: &mut User) ->
     TipState::Ok(create_tip(conn, from, to, true))
 }
 
+#[derive(Serialize)]
+pub struct Data {
+    users: Vec<crate::models::User>,
+    tips: Vec<crate::models::Tip>,
+}
+
+pub fn get_data(conn: &PgConnection) -> Data {
+    let mut data = Data {
+        users: Vec::new(),
+        tips: Vec::new(),
+    };
+    {
+        use crate::schema::users::dsl::*;
+        data.users = users.load::<User>(conn).expect("Error loading users");
+    }
+    {
+        use crate::schema::tips::dsl::*;
+        data.tips = tips.load::<Tip>(conn).expect("Error loading tips");
+    }
+    data
+}
+
+pub fn get_data_view(req: &mut Request) -> IronResult<Response> {
+    let conn = crate::establish_connection();
+    let mut resp = Response::new();
+    let data = get_data(&conn);
+    let json_value = serde_json::to_value(&data).unwrap();
+    resp.body = Some(Box::new(json_value.to_string()));
+    resp.status = Some(status::Ok);
+    resp.headers.set(iron::headers::ContentType::json());
+
+    Ok(resp)
+}
+
 pub fn validate_key(req: &mut Request) -> KeyState {
     let conn = crate::establish_connection();
     let query = req.url.query();

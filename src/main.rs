@@ -86,6 +86,10 @@ fn main() {
         "set_anti_tips",
     );
 
+    router.get("/tips/data",
+                tip::get_data_view,
+                "get_data");
+
     router.get(
         "/tips/tip/:from/:to",
         move |request: &mut Request| tip::transact_tip_view(request, false),
