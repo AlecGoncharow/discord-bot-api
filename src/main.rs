@@ -118,11 +118,20 @@ fn main() {
     tip::get_user(&connection, 25);
 
     let map = artifact_lib::Artifact::new();
+
     router.get(
         "/artifact/decks/deck/:adc",
         move |request: &mut Request| artifact::decode_and_return_cards(request, &map),
         "adc_deck",
     );
+
+    let map2 = artifact_lib::Artifact::new();
+    router.get(
+        "/artifact/card_sets",
+        move |request: &mut Request| artifact::get_data_view(request, &map2),
+        "artifact_card_sets",
+    );
+
 
     let mut mount = Mount::new();
     // Serve the shared JS/CSS at /static
