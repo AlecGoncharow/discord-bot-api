@@ -1,6 +1,7 @@
 # discord-bot-api [![Build Status](https://travis-ci.com/AlecGoncharow/discord-bot-api.svg?branch=master)](https://travis-ci.com/AlecGoncharow/discord-bot-api)
 This repo provides the structure to provide a web api for one of my other rust projects, a discord bot. Currently has little to no structure, have implemented base64 decoding of [Artifact](https://www.playartifact.com/) Deck Codes.  
-[Example:](https://aleca-api.herokuapp.com/artifact/decks/decode/ADCJQQGNrgCCJFBGCC7AhAKBRoMCIwGBksKg0FBLQG7AQhPlRIebWVtZXMy)
+[Example](https://aleca-api.herokuapp.com/artifact/decks/decode/ADCJQQGNrgCCJFBGCC7AhAKBRoMCIwGBksKg0FBLQG7AQhPlRIebWVtZXMy)  
+Snipped sample:
 ```json
 {
   "cards": [
@@ -12,17 +13,8 @@ This repo provides the structure to provide a web api for one of my other rust p
       "count": 1,
       "id": 10096
     },
-    {
-      "count": 1,
-      "id": 10106
-    },
-    {
-      "count": 1,
-      "id": 10111
-    },
-    ...
    ],
-   "heroes: [
+   "heroes": [
     {
       "id": 10006,
       "turn": 1
@@ -31,14 +23,14 @@ This repo provides the structure to provide a web api for one of my other rust p
       "id": 10014,
       "turn": 1
     },
-    ...
    ]
 ```
 
 Which is the same JSON used to generate [this](https://www.playartifact.com/d/ADCJQQGNrgCCJFBGCC7AhAKBRoMCIwGBksKg0FBLQG7AQhPlRIebWVtZXMy)
 
 Now maps decoded Decks to their respective cards:  
-[Example](https://aleca-api.herokuapp.com/artifact/decks/deck/ADCJQQGNrgCCJFBGCC7AhAKBRoMCIwGBksKg0FBLQG7AQhPlRIebWVtZXMy)  
+[Example](https://aleca-api.herokuapp.com/artifact/decks/deck/ADCJQQGNrgCCJFBGCC7AhAKBRoMCIwGBksKg0FBLQG7AQhPlRIebWVtZXMy)    
+Snipped sample:
 ```json
 {
   "cards": [
@@ -50,11 +42,9 @@ Now maps decoded Decks to their respective cards:
         "card_name": {
           "brazilian": "Chamariz Rebelde",
           "bulgarian": "Rebel Decoy",
-          "czech": "Rebel Decoy",
-          ...
+          "czech": "Rebel Decoy"
         },
       }
-        ...
    ]
 }
 ```
