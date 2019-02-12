@@ -45,6 +45,5 @@ Snipped sample:
           "czech": "Rebel Decoy"
         },
       }
-   ]
 }
 ```
