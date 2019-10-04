@@ -86,9 +86,7 @@ fn main() {
         "set_anti_tips",
     );
 
-    router.get("/tips/data",
-                tip::get_data_view,
-                "get_data");
+    router.get("/tips/data", tip::get_data_view, "get_data");
 
     router.get(
         "/tips/tip/:from/:to",
@@ -132,15 +130,21 @@ fn main() {
         "artifact_card_sets",
     );
 
-
     let mut mount = Mount::new();
     // Serve the shared JS/CSS at /static
     mount
         .mount("/", router)
         .mount("/static", Static::new(Path::new("static/")))
         .mount("/wasm", Static::new(Path::new("wasm_test/index.html")))
-        .mount("/balls_and_wall_wasm.js", Static::new(Path::new("wasm_test/balls_and_wall_wasm.js")))
-        .mount("/balls_and_wall_wasm.wasm", Static::new(Path::new("wasm_test/balls_and_wall_wasm.wasm")));
+        .mount(
+            "/balls_and_walls.js",
+            Static::new(Path::new("wasm_test/balls_and_walls.js")),
+        )
+        .mount(
+            "/balls_and_walls.wasm",
+            Static::new(Path::new("wasm_test/balls_and_walls.wasm")),
+        )
+        .mount("/font.ttf", Static::new(Path::new("wasm_test/font.ttf")));
     // Run the server.
     Iron::new(mount)
         .http(("0.0.0.0", get_server_port()))
