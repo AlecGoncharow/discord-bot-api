@@ -137,8 +137,10 @@ fn main() {
     // Serve the shared JS/CSS at /static
     mount
         .mount("/", router)
-        .mount("/static", Static::new(Path::new("static/")));
-
+        .mount("/static", Static::new(Path::new("static/")))
+        .mount("/wasm", Static::new(Path::new("wasm_test/index.html")))
+        .mount("/balls_and_wall_wasm.js", Static::new(Path::new("wasm_test/balls_and_wall_wasm.js")))
+        .mount("/balls_and_wall_wasm.wasm", Static::new(Path::new("wasm_test/balls_and_wall_wasm.wasm")));
     // Run the server.
     Iron::new(mount)
         .http(("0.0.0.0", get_server_port()))
