@@ -1,4 +1,4 @@
-use schema::{tips, users};
+use schema::{times, tips, users};
 pub const WEEKLY_TIPS: i32 = 10;
 pub const WEEKLY_ANTI_TIPS: i32 = 1;
 
@@ -45,4 +45,11 @@ pub struct Tip {
 #[derive(Queryable)]
 pub struct Key {
     pub key: i64,
+}
+
+#[derive(Queryable, Insertable, Serialize)]
+#[table_name = "times"]
+pub struct Time {
+    pub id: i32,
+    pub last_reset_time: i64,
 }

@@ -5,6 +5,13 @@ table! {
 }
 
 table! {
+    times (id) {
+        id -> Int4,
+        last_reset_time -> Int8,
+    }
+}
+
+table! {
     tips (id) {
         id -> Int4,
         user_from -> Int8,
@@ -30,6 +37,7 @@ table! {
 
 allow_tables_to_appear_in_same_query!(
     keys,
+    times,
     tips,
     users,
 );

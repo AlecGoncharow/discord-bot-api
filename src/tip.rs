@@ -6,6 +6,8 @@ use router::Router;
 use std::boxed::Box;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+pub const WEEK_SECS: i64 = 604800;
+
 pub enum KeyState {
     Ok,
     Invalid,
@@ -22,11 +24,71 @@ pub fn is_valid_key(conn: &PgConnection, provided_key: i64) -> bool {
     results.len() == 1
 }
 
+pub fn get_last_reset(conn: &PgConnection) -> i64 {
+    use crate::schema::times::dsl::*;
+
+    let mut time: Vec<crate::models::Time> = times
+        .load::<crate::models::Time>(conn)
+        .expect("time machine broke");
+
+    if time.len() == 0 {
+        // degenerate case, make time entry now
+        let new_time = crate::models::Time {
+            id: 1,
+            last_reset_time: 0,
+        };
+
+        diesel::insert_into(times)
+            .values(new_time)
+            .execute(conn)
+            .unwrap();
+
+        return 0;
+    }
+
+    let real_time = time.pop().unwrap();
+
+    real_time.last_reset_time
+}
+
+pub fn should_reset(conn: &PgConnection) -> bool {
+    let last = get_last_reset(conn);
+
+    let curr_time = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+
+    if last < curr_time as i64 - WEEK_SECS {
+        true
+    } else {
+        false
+    }
+}
+
+pub fn handle_weekly_reset(conn: &PgConnection) {
+    if should_reset(conn) {
+        use crate::schema::times::dsl::*;
+        let curr_time = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+
+        diesel::update(times)
+            .set(last_reset_time.eq(curr_time))
+            .execute(conn)
+            .unwrap();
+
+        set_tips(conn, -1, 10);
+        set_anti_tips(conn, -1, 3);
+    }
+}
+
 pub fn get_user(conn: &PgConnection, provided_id: i64) -> Vec<User> {
     use crate::schema::users::dsl::*;
     users
         .find(provided_id)
-        .load::<User>(conn)
+        .load::<crate::models::User>(conn)
         .expect("Error loading users")
 }
 
@@ -188,6 +250,8 @@ pub fn transact_tip_view(req: &mut Request, is_anti: bool) -> IronResult<Respons
             Ok(from) => match get_id(req, "to") {
                 Ok(to) => {
                     let conn = crate::establish_connection();
+                    handle_weekly_reset(&conn);
+
                     let mut from_user = get_user(&conn, from);
                     if from_user.len() != 1 {
                         resp.body = Some(Box::new("Not Found, From User"));
@@ -334,12 +398,14 @@ pub fn transact_anti_tip(conn: &PgConnection, from: &mut User, to: &mut User) ->
 pub struct Data {
     users: Vec<crate::models::User>,
     tips: Vec<crate::models::Tip>,
+    time: Vec<crate::models::Time>,
 }
 
 pub fn get_data(conn: &PgConnection) -> Data {
     let mut data = Data {
         users: Vec::new(),
         tips: Vec::new(),
+        time: Vec::new(),
     };
     {
         use crate::schema::users::dsl::*;
@@ -349,11 +415,19 @@ pub fn get_data(conn: &PgConnection) -> Data {
         use crate::schema::tips::dsl::*;
         data.tips = tips.load::<Tip>(conn).expect("Error loading tips");
     }
+
+    {
+        use crate::schema::times::dsl::*;
+        data.time = times
+            .load::<crate::models::Time>(conn)
+            .expect("Error loading time");
+    }
     data
 }
 
-pub fn get_data_view(req: &mut Request) -> IronResult<Response> {
+pub fn get_data_view(_req: &mut Request) -> IronResult<Response> {
     let conn = crate::establish_connection();
+    handle_weekly_reset(&conn);
     let mut resp = Response::new();
     let data = get_data(&conn);
     let json_value = serde_json::to_value(&data).unwrap();
