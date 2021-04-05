@@ -115,6 +115,7 @@ fn main() {
     tip::create_user(&connection, 25);
     tip::get_user(&connection, 25);
 
+    /*
     let map = artifact_lib::Artifact::new();
 
     router.get(
@@ -129,6 +130,7 @@ fn main() {
         move |request: &mut Request| artifact::get_data_view(request, &map2),
         "artifact_card_sets",
     );
+    */
 
     let mut mount = Mount::new();
     // Serve the shared JS/CSS at /static
